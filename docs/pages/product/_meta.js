@@ -2,6 +2,7 @@ export default {
   index: "Overview",
   dashboard: "Dashboard",
   traces: "Traces & conversations",
+  evaluators: "Evaluators",
   trends: "Trends & cross-metric analysis",
   clusters: "Failure clusters",
   cases: "Regression cases",

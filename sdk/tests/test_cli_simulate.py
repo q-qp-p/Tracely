@@ -103,7 +103,7 @@ def _args(**over):
     base = dict(
         agent="planner", agents=None, all_agents=False, env="ci", api="http://api.test", key="k",
         web_url="", pr=None, sha="deadbeef", github=False, no_github=True, token="",
-        dry_run=True, min_pass_rate=None, timeout=30,
+        dry_run=True, min_pass_rate=None, max_score_drop=None, timeout=30,
     )
     base.update(over)
     return argparse.Namespace(**base)
@@ -285,13 +285,14 @@ def test_min_pass_rate_is_forwarded(monkeypatch):
     sent = {}
     monkeypatch.setattr(
         cli, "start_simulation",
-        lambda api, key, agent, env, ref, pr, mpr=None: sent.update(rate=mpr) or {"id": "g1"},
+        lambda api, key, agent, env, ref, pr, mpr=None, msd=None: sent.update(rate=mpr, drop=msd)
+        or {"id": "g1"},
     )
     monkeypatch.setattr(cli, "poll_gate", lambda *a, **k: _data(status="PASS"))
     monkeypatch.setattr(cli, "gh_context", lambda: ("", "", None))
 
-    cli.cmd_simulate(_args(min_pass_rate=0.9))
-    assert sent["rate"] == 0.9
+    cli.cmd_simulate(_args(min_pass_rate=0.9, max_score_drop=0.1))
+    assert sent == {"rate": 0.9, "drop": 0.1}
 
 
 def test_conn_treats_empty_env_as_unset(monkeypatch):

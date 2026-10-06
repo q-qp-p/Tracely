@@ -113,6 +113,7 @@ to `expect`. Without an LLM key configured the scenario is skipped, never silent
     api: ${{ secrets.TRACELY_API }}
     key: ${{ secrets.TRACELY_KEY }}
     min-pass-rate: "0.9"   # adversarial suites land some probes by design
+    max-score-drop: "0.1"  # also fail if a judge's mean score slides vs the last green gate
     # agent: support-agent,planner   ← a subset; omit it to gate EVERY agent with scenarios
 ```
 

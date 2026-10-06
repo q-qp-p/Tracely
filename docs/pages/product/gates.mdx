@@ -41,6 +41,7 @@ Pick the **agent to gate** (the picker is ranked by how many promoted cases each
   Every case verdict is built from named **checks** — `tools`, `no_error`, and one `quality:<judge>` per judge the case was promoted from — each *required* or *advisory*, each `PASS` / `FAIL` / `UNAVAILABLE`, plus the execution evidence (mode, completed, divergence). A case is `PASS` only when every required check ran and passed under a completed execution; a required check that is unavailable makes it `INCOMPLETE`; a required `FAIL` is `FAIL`. Advisory checks stay visible and never decide. The same contract grades the manual **Replay** on a case page, so the UI, the CLI and CI cannot disagree about one candidate.
 
 - **Warnings** — the candidate's latency and token usage are compared with the last green gate for the same agent; a regression beyond 25 % is a warning. Warnings are **non-blocking** unless the gate is configured to block on them. Fail-to-pass is the only hard rule.
+- **Score drops** (scenario gates) — each [evaluator](/product/evaluators)'s mean score is compared, scenario by scenario, with the conversations of the last green gate. A drop of 0.1 or more is a warning (`score drop: goal_success -0.22 vs last green gate …`); run `tracely simulate --max-score-drop 0.1` and it fails the gate, even when every conversation passed.
 - **Cases** — one row per case: verdict, the candidate trace it was checked against (click through to the trace), and the assertion that failed.
 
 ## In CI

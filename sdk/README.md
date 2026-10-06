@@ -243,7 +243,7 @@ This is what makes replay deterministic, offline, and free (no API keys, no cost
 ## 3. The CI gate CLI
 
 ```bash
-tracely simulate [<agent> | --agent a,b | --all] [--min-pass-rate 0.9] [--timeout 900] [--github]
+tracely simulate [<agent> | --agent a,b | --all] [--min-pass-rate 0.9] [--max-score-drop 0.1] [--timeout 900] [--github]
 tracely gate     <agent> [--env ci] [--api …] [--key …] [--pr N] [--sha …] [--github]
 tracely replay   <agent> (--entrypoint module:func | --cmd "…") [--live | --lenient] [--github]
 ```
@@ -253,6 +253,8 @@ tracely replay   <agent> (--entrypoint module:func | --cmd "…") [--live | --le
 - **`tracely replay <agent>`** — re-run the agent **on each promoted case's recorded input** (fetched from `GET /api/gate/suite`), then gate. `--entrypoint module:func` calls a Python function per case; `--cmd "…"` runs a shell command per case (gets `TRACELY_INPUT`) that emits its own trace. Strict recorded replay by default: each case line says what actually happened — `[recorded · N served]`, `· diverged` with the evidence underneath (unused recorded calls, inputs that differed, the strict miss), `[replay error: fixtures unavailable]` when the case's recording could not be loaded (the agent is **not** run; the trace is emitted errored so the gate fails loudly), `[lenient · …]` under `--lenient` (legacy live fall-through, reported), or `[live]` under `--live`. `--cmd` runs are always live — fixtures are not injected into an external process — and the CLI says so.
 
 Scenarios belong to an agent, so `simulate` gates one agent, a comma-separated subset, or — with `--all` — every agent that has at least one **enabled** scenario (an agent whose suite is switched off is skipped, not reported untested). Each agent gets its own gate run but they share one commit status and one PR comment, and the job fails if any agent does. `--timeout` budgets the whole command.
+
+**Score drops.** Passing isn't the same as not getting worse: `simulate` also compares every evaluator's mean score, scenario by scenario, against the last green gate's conversations. A drop of `GATE_SCORE_DROP_WARN` (default 0.1) or more is a soft warning; pass `--max-score-drop 0.1` to make it fail the gate. Only evaluators scored on a 0–1 scale are compared, advisory ones never.
 
 All three **exit 0 (PASS) / 1 (FAIL) / 2 (no answer — timeout, unreachable API, or a server-side ERROR run)** and, inside GitHub Actions (or with `--github`), post a **commit status + PR comment** with per-case results and soft warnings (latency/token deltas vs the last green gate). `--dry-run` prints the GitHub calls instead of sending; `--no-github` never touches GitHub. Config via flags or env (`TRACELY_API`, `TRACELY_KEY`, `TRACELY_AGENT`, `TRACELY_GATE_ENV`, `TRACELY_WEB_URL`, `GITHUB_TOKEN`; the git ref falls back to `GIT_REF` outside Actions). A `--cmd` subprocess inherits `TRACELY_INPUT` plus `TRACELY_API`/`TRACELY_KEY`/`TRACELY_ENV`, so it can emit traces without hardcoding the endpoint. A reusable composite action lives at `.github/actions/tracely-gate/`.
 

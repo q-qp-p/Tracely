@@ -11,7 +11,7 @@ export default function EvaluatorsPage() {
       <header className="reveal">
         <div className="flex items-center gap-3">
           <h1 className="font-display text-[26px] font-extrabold tracking-tight">Evaluators</h1>
-          <DocLink path="/product/traces" />
+          <DocLink path="/product/evaluators" />
         </div>
         <p className="mt-1.5 max-w-3xl text-[14px] text-fg-muted">
           The checks that grade every new run — deterministic structural checks and LLM-judge rubrics. Each one is a

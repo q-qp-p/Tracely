@@ -207,7 +207,7 @@ This is what makes replay deterministic, offline, and free (no API keys, no cost
 ## 3. The CI gate CLI
 
 ```bash
-tracely simulate [<agent> | --agent a,b | --all] [--min-pass-rate 0.9] [--timeout 900] [--github]
+tracely simulate [<agent> | --agent a,b | --all] [--min-pass-rate 0.9] [--max-score-drop 0.1] [--timeout 900] [--github]
 tracely gate     <agent> [--env ci] [--api …] [--key …] [--pr N] [--sha …] [--github]
 tracely replay   <agent> (--entrypoint module:func | --cmd "…") [--live] [--github]
 ```

@@ -77,6 +77,20 @@ def _ids(body: dict, key: str) -> list[str] | None:
     return [str(x) for x in v]
 
 
+def _unit_float(body: dict, key: str) -> float | None:
+    """An optional 0..1 knob (`min_pass_rate`, `max_score_drop`); 400 on anything else."""
+    v = body.get(key)
+    if v is None:
+        return None
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail=f"{key} must be a number") from None
+    if not 0.0 <= v <= 1.0:
+        raise HTTPException(status_code=400, detail=f"{key} must be between 0 and 1")
+    return v
+
+
 @router.post("/gate")
 async def run_gate(
     project_id: str = Depends(get_project_id), body: dict = Body(default={})
@@ -131,14 +145,8 @@ async def run_simulated_gate(
         raise HTTPException(status_code=400, detail="agent required")
     case_ids = _ids(body, "case_ids")
     scenario_ids = _ids(body, "scenario_ids")
-    min_pass_rate = body.get("min_pass_rate")
-    if min_pass_rate is not None:
-        try:
-            min_pass_rate = float(min_pass_rate)
-        except (TypeError, ValueError):
-            raise HTTPException(status_code=400, detail="min_pass_rate must be a number") from None
-        if not 0.0 <= min_pass_rate <= 1.0:
-            raise HTTPException(status_code=400, detail="min_pass_rate must be between 0 and 1")
+    min_pass_rate = _unit_float(body, "min_pass_rate")
+    max_score_drop = _unit_float(body, "max_score_drop")
 
     def work():
         with SyncSessionLocal() as s:
@@ -161,7 +169,7 @@ async def run_simulated_gate(
     gate_id, aid, env, git_ref, pr_number = payload
     run_scenario_gate_task.delay(
         project_id, aid, gate_id, env, git_ref, pr_number, min_pass_rate,
-        case_ids, scenario_ids,
+        case_ids, scenario_ids, max_score_drop,
     )
     return {"id": gate_id, "status": "RUNNING", "agent": agent_ref, "env": env}
 

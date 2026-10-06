@@ -20,6 +20,7 @@ from tracely.api.auth import get_project_id, require_user
 from tracely.config import settings
 from tracely.domain.evaluation.evaluator_suggestion import suggest_evaluator
 from tracely.domain.failure.histogram import histogram
+from tracely.domain.failure.versions import VersionRow, introduced_in
 from tracely.infrastructure.clickhouse.trace_reader import TraceReader
 from tracely.infrastructure.db import repositories as repo
 from tracely.infrastructure.db.engine import SyncSessionLocal
@@ -104,6 +105,25 @@ async def list_clusters(
     return await run_in_threadpool(work)
 
 
+def _versions(rows: list[dict], labels: dict[str, str]) -> dict[str, Any]:
+    """The cluster's "by agent version" block: runs vs failures per release, oldest first, and
+    the version that introduced it when the evidence supports naming one."""
+    vrows = [VersionRow(**r) for r in rows]
+    blamed = introduced_in(vrows)
+    return {
+        "introduced_in": labels.get(blamed, blamed) if blamed else None,
+        "rows": [
+            {
+                "version": labels.get(r.version_id, r.version_id) if r.version_id else None,
+                "runs": r.runs,
+                "members": r.members,
+                "first_seen": r.first_seen.isoformat() if r.first_seen else None,
+            }
+            for r in sorted(vrows, key=lambda r: r.first_seen)
+        ],
+    }
+
+
 @router.get("/clusters/{cluster_id}")
 async def get_cluster(
     cluster_id: str, project_id: str = Depends(get_project_id), members: int = 25
@@ -161,6 +181,10 @@ async def get_cluster(
             d["member_total"] = len(all_ids)
             d["histogram"] = histogram(reader.member_timestamps(project_id, all_ids))
             d["suggested_evaluator"] = suggest_evaluator(cl.label, cl.taxonomy)
+            d["versions"] = _versions(
+                reader.version_breakdown(project_id, cl.agent_id, all_ids),
+                repo.agent_version_labels(s, cl.agent_id),
+            )
             return d
 
     res = await run_in_threadpool(work)

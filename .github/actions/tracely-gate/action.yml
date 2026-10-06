@@ -30,6 +30,13 @@ inputs:
       suites, which land some probes by design.
     required: false
     default: ""
+  max-score-drop:
+    description: >
+      simulate only. Fail when any evaluator's mean score falls at least this much (0-1, e.g. 0.1)
+      vs the last green gate on the same scenarios, even if every conversation passed. Empty =
+      a drop is only a warning.
+    required: false
+    default: ""
   timeout:
     description: "simulate only. Seconds to wait for the run. Timing out fails the job, never passes it."
     required: false
@@ -78,6 +85,7 @@ runs:
         AGENT: ${{ inputs.agent }}
         GATE_ENV: ${{ inputs.env }}
         MIN_PASS_RATE: ${{ inputs.min-pass-rate }}
+        MAX_SCORE_DROP: ${{ inputs.max-score-drop }}
         TIMEOUT: ${{ inputs.timeout }}
         # The identity of THIS workflow attempt. `mode=gate` pairs candidates to traces stamped
         # with it, so an older trace with the same input can never satisfy this run. Export the
@@ -104,6 +112,9 @@ runs:
           fi
           if [ -n "$MIN_PASS_RATE" ]; then
             args+=(--min-pass-rate "$MIN_PASS_RATE")
+          fi
+          if [ -n "$MAX_SCORE_DROP" ]; then
+            args+=(--max-score-drop "$MAX_SCORE_DROP")
           fi
           tracely simulate "${args[@]}"
         elif [ "$MODE" = "gate" ]; then

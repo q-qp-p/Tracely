@@ -542,6 +542,12 @@ export type FailureCluster = {
   member_total?: number;
   histogram?: { t: string; count: number }[];
   suggested_evaluator?: SuggestedEvaluator;
+  // Production runs vs failures per agent version, oldest first; `version: null` = runs that sent
+  // no `tracely.agent.version`. `introduced_in` is set only when earlier versions ran clean.
+  versions?: {
+    introduced_in: string | null;
+    rows: { version: string | null; runs: number; members: number; first_seen: string | null }[];
+  };
 };
 
 /** `minSize` hides clusters with fewer members (>= 2); omitted = the backend default. */

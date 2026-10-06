@@ -19,6 +19,7 @@ from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
 
 from tracely.config import settings
+from tracely.domain.gate.score_drop import ScoreDrop, score_drops
 from tracely.domain.gate.warnings import delta_warnings
 from tracely.domain.regression.outcome import gate_status, worst_gate_status
 from tracely.domain.regression.fixtures import FixtureBundle
@@ -324,8 +325,13 @@ class GateService:
         min_pass_rate: float | None = None,
         project_id: str | None = None,
         scenario_ids: Sequence[str] | None = None,
+        max_score_drop: float | None = None,
     ) -> GateRun | None:
         """Phase 2: grade the conversations phase 1 drove, then finalize the run.
+
+        `max_score_drop` (0..1, from `tracely simulate --max-score-drop`): an evaluator whose mean
+        fell at least that much vs the last green gate FAILs the run, even when every conversation
+        passed. Without it a drop past `gate_score_drop_warn` is only a warning.
 
         Separate task on purpose. The agent's own spans reach Tracely as ordinary OTLP, so their
         ingest is a Celery task — and under the default `--pool=solo --concurrency=1` those tasks
@@ -411,11 +417,85 @@ class GateService:
         gate.skipped += sum(o.verdict == "SKIP" for o in outcomes) + len(orphaned)
         # A gate is only as good as its worst half.
         gate.status = _worst(case_status, scenario_status)
+        drops = self._score_drops(gate, outcomes, max_score_drop)
+        if drops:
+            gate.warnings = list(dict.fromkeys([
+                *(gate.warnings or []), *(f"score drop: {d.message()}" for d in drops),
+            ]))
+            blocking = max_score_drop is not None and any(
+                -d.delta >= max_score_drop - 1e-9 for d in drops
+            )
+            if blocking or settings.gate_block_on_warnings:
+                gate.status = _worst(gate.status, "FAIL")
         gate.finished_at = datetime.now(timezone.utc)
         self.session.commit()
         log.info("scenario_gate", gate_id=gate.id, status=gate.status, **summary)
         self._notify_gate(gate)
         return gate
+
+    def _score_drops(
+        self, gate: GateRun, outcomes: list[ScenarioOutcome], max_score_drop: float | None
+    ) -> list[ScoreDrop]:
+        """Evaluators whose mean fell vs the last green scenario gate, per shared scenario.
+
+        Read from ClickHouse for BOTH runs rather than stored on the row: the baseline's
+        conversations are still there (`detail["trace_ids"]`), and re-reading them means a judge
+        re-run since then is compared as it scores today. Advisory evaluators and the authored
+        `tracely.scenario.*` expectations are left out — the first never blocks anything, the
+        second is already a verdict on the conversation.
+        """
+        threshold = settings.gate_score_drop_warn
+        if max_score_drop is not None:
+            threshold = min(threshold, max_score_drop)
+        current = {o.scenario_id: o.trace_ids for o in outcomes if o.scenario_id and o.trace_ids}
+        if not current:
+            return []
+        baseline = self.session.execute(
+            select(GateRun)
+            .join(GateCase, GateCase.gate_run_id == GateRun.id)
+            .where(
+                GateRun.project_id == gate.project_id,
+                GateRun.agent_id == gate.agent_id,
+                GateRun.status == "PASS",
+                GateRun.id != gate.id,
+                GateCase.scenario_id.is_not(None),
+            )
+            .order_by(GateRun.created_at.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        if baseline is None:
+            return []
+        previous = {
+            gc.scenario_id: list((gc.detail or {}).get("trace_ids") or [])
+            for gc in self.session.execute(
+                select(GateCase).where(
+                    GateCase.gate_run_id == baseline.id, GateCase.scenario_id.is_not(None)
+                )
+            ).scalars()
+            if gc.scenario_id in current
+        }
+        if not previous:
+            return []
+        scores = self.trace_reader.scores_by_trace(
+            gate.project_id, [t for tids in (*current.values(), *previous.values()) for t in tids]
+        )
+
+        def table(by_scenario: dict[str, list[str]]) -> dict[str, dict[str, list[float]]]:
+            out: dict[str, dict[str, list[float]]] = {}
+            for sid, tids in by_scenario.items():
+                for tid in tids:
+                    for s in scores.get(tid, []):
+                        name, value = s.get("name") or "", s.get("value")
+                        # SKIP means "not graded" — its value says nothing about quality.
+                        if value is None or s.get("verdict") == "SKIP":
+                            continue
+                        if name.startswith("tracely.scenario."):
+                            continue
+                        out.setdefault(sid, {}).setdefault(name, []).append(float(value))
+            return out
+
+        advisory = repositories.advisory_score_names(self.session, gate.project_id)
+        return score_drops(table(current), table(previous), threshold, exclude=advisory)
 
     def _milestone_ci(self, gate: GateRun, candidate_spans: list[list]) -> None:
         """`ci_check_completed` — a REAL CI run graded the suite against a specific revision: it

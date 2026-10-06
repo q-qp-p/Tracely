@@ -32,6 +32,9 @@ export default async function ClusterPage({ params }: { params: Promise<{ cluste
   const hist = c.histogram ?? [];
   const histMax = Math.max(1, ...hist.map((b) => b.count));
   const ev = c.suggested_evaluator;
+  const versions = c.versions?.rows ?? [];
+  const versioned = versions.some((v) => v.version);
+  const introduced = c.versions?.introduced_in ?? null;
 
   return (
     <div className="space-y-6">
@@ -87,6 +90,42 @@ export default async function ClusterPage({ params }: { params: Promise<{ cluste
               />
             ))}
           </div>
+        </section>
+      )}
+
+      {versions.length > 0 && (
+        <section className="reveal card overflow-hidden" style={{ animationDelay: "80ms" }}>
+          <div className="flex items-center justify-between border-b border-line px-4 py-3">
+            <h2 className="text-[13px] font-semibold text-fg">By agent version</h2>
+            {introduced ? (
+              <Badge variant="fail">introduced in {introduced}</Badge>
+            ) : (
+              <span className="font-mono text-[10px] uppercase tracking-wider text-fg-faint">production runs</span>
+            )}
+          </div>
+          {versioned ? (
+            <div className="divide-y divide-line">
+              {versions.map((v) => (
+                <div key={v.version ?? "—"} className="flex items-center gap-3 px-4 py-2.5 text-[12.5px]">
+                  <span className={`w-28 truncate font-mono ${v.version === introduced ? "text-fail" : "text-fg"}`}>
+                    {v.version ?? "unversioned"}
+                  </span>
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-700">
+                    <div className="h-full bg-fail/70" style={{ width: `${v.runs ? (v.members / v.runs) * 100 : 0}%` }} />
+                  </div>
+                  <span className="w-40 text-right font-mono text-[11.5px] tabular-nums text-fg-muted">
+                    {v.members} of {v.runs} run{v.runs === 1 ? "" : "s"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="px-4 py-3.5 text-[12.5px] text-fg-muted">
+              These runs carry no agent version, so the failure can't be tied to a release. Pass{" "}
+              <code className="font-mono text-fg">version=</code> to <code className="font-mono text-fg">tracely.agent(…)</code>{" "}
+              (a git sha works) and this shows which release introduced it.
+            </p>
+          )}
         </section>
       )}
 

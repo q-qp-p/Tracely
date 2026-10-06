@@ -271,6 +271,33 @@ class TraceReader:
         ).result_rows
         return [r[0] for r in rows]
 
+    def version_breakdown(
+        self, project_id: str, agent_id: str, member_ids: Iterable[str]
+    ) -> list[dict[str, Any]]:
+        """Per agent version: production runs it served, how many of those are `member_ids`, and
+        when the version was first seen — what attributes a failure cluster to a release.
+
+        One row per trace first (a version is stamped on the agent span only, so `anyIf` picks it
+        from whichever span carries it), then per version. `ci` and Tracely's own internal runs are
+        left out: a replay of an old case on a new version is not that version's traffic.
+        ponytail: scans the agent's whole retained history per call; cache or pre-aggregate if
+        cluster detail ever shows up in the query log."""
+        members = sorted({t for t in member_ids if t})
+        rows = self.client.query(
+            "SELECT v, count() AS runs, countIf(trace_id IN {m:Array(String)}) AS hits, "
+            "min(ts) AS first_seen "
+            "FROM (SELECT trace_id, anyIf(agent_version_id, agent_version_id != '') AS v, "
+            "  min(start_time) AS ts FROM events FINAL "
+            "  WHERE project_id = {p:String} AND agent_id = {ag:String} AND env != 'ci' "
+            "  AND internal_kind = '' AND is_deleted = 0 GROUP BY trace_id) "
+            "GROUP BY v",
+            parameters={"p": project_id, "ag": agent_id, "m": members},
+        ).result_rows
+        return [
+            {"version_id": v, "runs": int(runs), "members": int(hits), "first_seen": first}
+            for v, runs, hits, first in rows
+        ]
+
     def member_meta(
         self, project_id: str, trace_ids: Iterable[str]
     ) -> dict[str, dict[str, Any]]:

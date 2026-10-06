@@ -592,11 +592,14 @@ def cmd_gate(args: argparse.Namespace) -> int:
 
 
 def start_simulation(
-    api: str, key: str, agent: str, env: str, git_ref: str, pr: int | None, min_pass_rate=None
+    api: str, key: str, agent: str, env: str, git_ref: str, pr: int | None, min_pass_rate=None,
+    max_score_drop=None,
 ) -> dict:
     body: dict = {"agent": agent, "env": env, "git_ref": git_ref, "pr_number": pr}
     if min_pass_rate is not None:
         body["min_pass_rate"] = min_pass_rate
+    if max_score_drop is not None:
+        body["max_score_drop"] = max_score_drop
     return _post_json(f"{api.rstrip('/')}/api/gate/simulate", key, body)
 
 
@@ -700,7 +703,9 @@ def cmd_simulate(args: argparse.Namespace) -> int:
     results: list[dict] = []
     for agent in agents:
         try:
-            gate = start_simulation(api, key, agent, args.env, sha or "", pr, args.min_pass_rate)
+            gate = start_simulation(
+                api, key, agent, args.env, sha or "", pr, args.min_pass_rate, args.max_score_drop
+            )
             print(f"driving scenarios for {agent} (gate {gate['id'][:8]}…)")
             started.append((agent, gate["id"]))
         except urllib.error.HTTPError as e:
@@ -1070,6 +1075,13 @@ def main(argv: list[str] | None = None) -> int:
         type=float,
         help="fraction of conversations that must PASS (default: the server's setting, 1.0). "
         "Lower it for adversarial suites, which land some probes by design.",
+    )
+    s.add_argument(
+        "--max-score-drop",
+        type=float,
+        help="fail when any evaluator's mean score falls at least this much (0..1, e.g. 0.1) vs "
+        "the last green gate on the same scenarios — even if every conversation passed. Without "
+        "it, a drop is reported as a soft warning only.",
     )
     s.add_argument(
         "--timeout",

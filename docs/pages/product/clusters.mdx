@@ -26,6 +26,7 @@ Stage 2 needs the workspace's OpenRouter key; without one the button is disabled
 <img className="screenshot" src="/screenshots/cluster-detail.png" alt="An issue: occurrences over time, analysis, proposed fix, suggested evaluator, signature, member traces" />
 
 - **Occurrences** — when it happened, per day. A spike says *a deploy did this*; a flat line says *it has always done this*.
+- **By agent version** — production runs per version and how many of them fail this way. When earlier versions served at least 20 runs without a single one landing here, the first version that does is named: *introduced in v3*. A failure present since the first version Tracely saw is never pinned on one. Needs `version=` on `tracely.agent(…)` — a git sha is fine.
 - **Analysis / Proposed fix** — the written-up mechanism and what to change.
 - **Suggested evaluator** — a draft column that would catch this class of failure going forward. *Add it* opens the [Add Column](/product/traces#add-column) form pre-filled so you can review, edit, and save it.
 - **Signature** — the masked structural key.

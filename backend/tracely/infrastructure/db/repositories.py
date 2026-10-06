@@ -715,6 +715,13 @@ def clusters_count(
     return int(s.execute(q).scalar_one())
 
 
+def agent_version_labels(s: Session, agent_id: str) -> dict[str, str]:
+    """`{version_id: label}` for one agent — the label the SDK sent (`version="v3"`, stored as
+    `config_hash`) unless a friendlier `label` was set."""
+    rows = s.execute(select(AgentVersion).where(AgentVersion.agent_id == agent_id)).scalars()
+    return {v.id: v.label or v.config_hash for v in rows}
+
+
 def cluster_get(s: Session, project_id: str, cluster_id: str) -> FailureCluster | None:
     cl = s.get(FailureCluster, cluster_id)
     return cl if cl and cl.project_id == project_id else None

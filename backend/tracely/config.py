@@ -244,6 +244,10 @@ class Settings(BaseSettings):
     gate_latency_warn_pct: float = 25.0
     gate_tokens_warn_pct: float = 25.0
     gate_block_on_warnings: bool = False
+    # Scenario gates: an evaluator whose mean score fell at least this much (absolute, 0..1 scale)
+    # vs the last green gate's conversations raises a soft warning. CI makes it blocking per run
+    # with `tracely simulate --max-score-drop` — a per-pipeline choice, not a server-wide one.
+    gate_score_drop_warn: float = 0.1
     # Coverage policy. A gate that exercised NONE of its promoted cases (every case SKIPped
     # because CI emitted no matching trace) is ALWAYS treated as a non-PASS `NO_COVERAGE` —
     # a green gate that tested nothing is the worst failure mode for a merge-blocker. When this

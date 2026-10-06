@@ -134,6 +134,8 @@ x-app-env: &app-env
   ALLOW_PUBLIC_SIGNUP: ${ALLOW_PUBLIC_SIGNUP:-false}
   # Agent endpoints / monitor webhooks on private addresses. Unset = allowed outside prod.
   ALLOW_PRIVATE_URLS: ${ALLOW_PRIVATE_URLS:-}
+  # Scenario gates warn when an evaluator's mean falls this much vs the last green gate.
+  GATE_SCORE_DROP_WARN: ${GATE_SCORE_DROP_WARN:-0.1}
   REQUIRE_PROJECT_LLM_KEY: ${REQUIRE_PROJECT_LLM_KEY:-false}
   STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
   STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}

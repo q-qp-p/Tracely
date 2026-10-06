@@ -10,7 +10,7 @@ The `tracely` CLI (shipped with the SDK) turns an agent's behaviour into a pull-
 exit `0` (PASS) / `1` (the gate said no: FAIL, NO_COVERAGE) / `2` (no verdict was reached: INCOMPLETE, ERROR, unreachable), plus a GitHub commit status + PR comment. All non-zero codes block the merge; the split says whose fault it was.
 
 ```bash
-tracely simulate [<agent> | --agent a,b | --all] [--min-pass-rate 0.9] [--timeout 900] [--github]
+tracely simulate [<agent> | --agent a,b | --all] [--min-pass-rate 0.9] [--max-score-drop 0.1] [--timeout 900] [--github]
 tracely gate     <agent> [--env ci] [--api …] [--key …] [--pr N] [--sha …] [--github]
 tracely replay   <agent> (--entrypoint module:func | --cmd "…") [--live] [--github]
 tracely export   [--out dump.ndjson] [--limit N] [--from-ts …] [--to-ts …] [--evals]
@@ -127,6 +127,11 @@ A promoted case is a frozen failing run. The **hard gate** is *fail-to-pass*: th
 reproduce the failure (no error step, and any tool the model required must actually run). On top,
 **soft warnings** flag latency / token regressions versus the last green gate (non-blocking by
 default; set `gate_block_on_warnings` to make them block).
+
+`tracely simulate` adds **score drops**: each evaluator's mean score is compared, scenario by
+scenario, with the last green gate's conversations. A drop of 0.1 or more (`GATE_SCORE_DROP_WARN`)
+is a warning; `--max-score-drop 0.1` makes it fail the gate even when every conversation passed.
+Only evaluators scored 0–1 are compared, and advisory evaluators never are.
 
 ## GitHub Actions
 
