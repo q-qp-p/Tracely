@@ -140,8 +140,8 @@ export function deriveSteps(s: QuestStatus, l: QuestLocal): QuestStep[] {
       group: "Explore",
       title: "Add an evaluator column",
       detail: "Evaluators are the columns of the traces table — every new run gets graded automatically.",
-      href: "/traces",
-      cta: "+ Add column on Traces",
+      href: "/evaluators",
+      cta: "Add an evaluator",
       done: s.evaluators > 0,
     },
     {

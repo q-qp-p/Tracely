@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  EVALUATOR_RECIPE,
   RECIPES,
   TRIGGERS,
   draftProblem,
@@ -126,5 +127,13 @@ describe("RECIPES", () => {
         if (url !== undefined) expect(url).toBe("");
       }
     }
+  });
+});
+
+describe("EVALUATOR_RECIPE", () => {
+  it("points at a trace_failed recipe scoped by score_name", () => {
+    const r = RECIPES[EVALUATOR_RECIPE];
+    expect(r?.draft.type).toBe("trace_failed");
+    expect(r?.draft).toHaveProperty("score_name");
   });
 });

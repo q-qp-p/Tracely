@@ -227,6 +227,10 @@ export const RECIPES: { title: string; why: string; draft: Partial<Draft>; steps
   },
 ];
 
+/** The recipe an evaluator's "Alert on fail" opens (`?recipe=…&score=<score_name>`). Found by
+ *  shape, not position, so reordering the gallery can't point the link at the wrong alert. */
+export const EVALUATOR_RECIPE = RECIPES.findIndex((r) => r.draft.type === "trace_failed" && "score_name" in r.draft);
+
 export function emptyDraft(patch: Partial<Draft> = {}): Draft {
   return { ...BASE, ...patch };
 }

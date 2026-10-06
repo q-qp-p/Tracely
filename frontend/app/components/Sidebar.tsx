@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import type { Me } from "@/app/lib/auth/types";
 import { AccountMenu } from "./AccountMenu";
 import { DOCS_URL } from "@/app/lib/site";
-import { IconActivity, IconBell, IconBolt, IconBook, IconCard, IconDatabase, IconGate, IconGrid, IconLayers, IconScale, IconSettings, IconShield, IconTrend, IconUsers } from "./icons";
+import { IconActivity, IconBell, IconBolt, IconBook, IconCard, IconCheck, IconDatabase, IconGate, IconGrid, IconLayers, IconScale, IconSettings, IconShield, IconTrend, IconUsers } from "./icons";
 
 type NavItem = { href: string; label: string; Icon: typeof IconGrid; exact?: boolean; external?: boolean };
 
@@ -22,6 +22,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { href: "/clusters", label: "Failure clusters", Icon: IconLayers },
       { href: "/traces", label: "Traces", Icon: IconActivity },
+      { href: "/evaluators", label: "Evaluators", Icon: IconCheck },
       { href: "/trends", label: "Trends", Icon: IconTrend },
     ],
   },
@@ -35,13 +36,16 @@ const NAV: { group: string; items: NavItem[] }[] = [
   },
   {
     group: "Runs",
-    items: [{ href: "/gates", label: "CI gates", Icon: IconGate }],
+    items: [
+      { href: "/gates", label: "CI gates", Icon: IconGate },
+      // Alerts are a working tool, not a setting — the route stays under /settings for old links.
+      { href: "/settings/alerts", label: "Alerts", Icon: IconBell },
+    ],
   },
   {
     group: "Configure",
     items: [
       { href: "/settings/api-keys", label: "API keys", Icon: IconSettings },
-      { href: "/settings/alerts", label: "Alerts", Icon: IconBell },
       { href: "/settings/data", label: "Data", Icon: IconDatabase },
       { href: "/settings/team", label: "Team", Icon: IconUsers },
       // The ONLY route to billing — deliberately not duplicated in the AccountMenu dropdown,

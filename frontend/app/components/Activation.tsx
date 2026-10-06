@@ -99,7 +99,7 @@ with tracely.trace(agent="support", conversation="conv-1"):
             Evaluators are the columns of the traces table — structural checks run free, an LLM
             judge grades the answer. This ticks when one actually produces a verdict on your trace.
           </p>
-          <Action href="/traces">Add a column on Traces →</Action>
+          <Action href="/evaluators">Add an evaluator →</Action>
         </>
       ),
     },

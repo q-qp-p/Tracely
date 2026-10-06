@@ -12,9 +12,9 @@ export const metadata = { title: "New alert · Tracely" };
 export default async function NewAlertPage({
   searchParams,
 }: {
-  searchParams: Promise<{ recipe?: string }>;
+  searchParams: Promise<{ recipe?: string; score?: string; name?: string }>;
 }) {
-  const { recipe } = await searchParams;
+  const { recipe, score, name } = await searchParams;
   const index = recipe === undefined ? -1 : Number(recipe);
   if (recipe !== undefined && (Number.isNaN(index) || index < 0 || index >= RECIPES.length)) notFound();
   const picked = index >= 0 ? RECIPES[index] : undefined;
@@ -30,8 +30,14 @@ export default async function NewAlertPage({
     ),
   ];
 
-  const draft = emptyDraft(picked?.draft ?? {});
-  const steps: StepDraft[] = (picked?.steps ?? []).map((s, i) => ({
+  // `?score=` comes from an evaluator's "Alert on fail": scope the rule to that column, and drop the
+  // recipe's example condition step — left in, it would quietly filter out most real failures.
+  const draft = emptyDraft({
+    ...(picked?.draft ?? {}),
+    ...(score ? { score_name: score, name: `${name || score} failing live` } : {}),
+  });
+  const recipeSteps = (picked?.steps ?? []).filter((s) => !score || s.step_type !== "condition");
+  const steps: StepDraft[] = recipeSteps.map((s, i) => ({
     id: newStepId(),
     order_index: i,
     name: s.name,
